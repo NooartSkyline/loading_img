@@ -130,13 +130,19 @@ class FacebookParser {
   }
 
   List<String> photoIds(String html) {
-    final expression = RegExp(r'\(dkc "photo_fbid"\) \(dkc "(\d+)"\)');
+    final loose = _loose(html);
+    final expressions = [
+      RegExp(r'\(dkc "photo_fbid"\) \(dkc "(\d+)"\)'),
+      RegExp(r'(?<!target_)photo_fbid\s*:\s*"(\d+)"'),
+    ];
     final ids = <String>[];
     final seen = <String>{};
-    for (final match in expression.allMatches(_loose(html))) {
-      final id = match.group(1);
-      if (id == null || !seen.add(id)) continue;
-      ids.add(id);
+    for (final expression in expressions) {
+      for (final match in expression.allMatches(loose)) {
+        final id = match.group(1);
+        if (id == null || !seen.add(id)) continue;
+        ids.add(id);
+      }
     }
     return ids;
   }
@@ -175,7 +181,7 @@ class FacebookParser {
   }
 
   List<String> linkedPhotoIds(String html) {
-    final expression = RegExp(r'target_photo_id":"(\d+)"');
+    final expression = RegExp(r'target_photo_(?:id|fbid)":"(\d+)"');
     final ids = <String>[];
     final seen = <String>{};
     for (final match in expression.allMatches(_loose(html))) {
@@ -202,9 +208,13 @@ class FacebookParser {
   }
 
   static final _attachment = RegExp(
-    r'https://[^"\s<>),\\]+?/t\d+\.\d+-6/\d+_(\d{10,})_\d+_n\.(?:jpe?g|webp|png)(?:\?[^"\s<>),\\]*)?',
+    r'https://[^"\s<>),\\]+?/t\d+\.\d+-(?!1/)\d+/\d+_(\d{10,})_\d+_[a-z]\.(?:jpe?g|webp|png)(?:\?[^"\s<>),\\]*)?',
     caseSensitive: false,
   );
+
+  String? fileId(String url) => _fileId(url);
+
+  int fileRank(String url) => _rank(url);
 
   List<String> _stills(String html) {
     final found = <String, String>{};
@@ -259,6 +269,8 @@ class FacebookParser {
         .replaceAll('&quot;', '"')
         .replaceAll(r'\u0026', '&');
   }
+
+  bool isLoginWall(String html) => _isBlockedPage(html);
 
   bool _isBlockedPage(String html) {
     final url = (metaContent(html, 'og:url') ?? '').toLowerCase();

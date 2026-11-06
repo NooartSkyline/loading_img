@@ -9,6 +9,16 @@ class AppException implements Exception {
   String toString() => message;
 }
 
+class InstagramLoginRequired extends AppException {
+  const InstagramLoginRequired()
+    : super('อัลบั้มนี้ต้องล็อกอิน Instagram ก่อน จึงจะเห็นรูปที่เหลือ');
+}
+
+class FacebookLoginRequired extends AppException {
+  const FacebookLoginRequired()
+    : super('โพสต์นี้ต้องล็อกอิน Facebook ก่อน จึงจะเห็นรูปหรือวิดีโอ');
+}
+
 AppException asAppException(Object error) {
   if (error is AppException) return error;
   if (error is DioException) return AppException(describeDio(error));

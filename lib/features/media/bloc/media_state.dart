@@ -12,6 +12,8 @@ class MediaState extends Equatable {
     this.errorMessage,
     this.successMessage,
     this.progress,
+    this.needsInstagramLogin = false,
+    this.needsFacebookLogin = false,
   });
 
   final MediaPhase phase;
@@ -20,8 +22,11 @@ class MediaState extends Equatable {
   final String? errorMessage;
   final String? successMessage;
   final DownloadProgress? progress;
+  final bool needsInstagramLogin;
+  final bool needsFacebookLogin;
 
-  bool get isBusy => phase == MediaPhase.resolving || phase == MediaPhase.downloading;
+  bool get isBusy =>
+      phase == MediaPhase.resolving || phase == MediaPhase.downloading;
 
   int get selectedCount {
     final current = post;
@@ -44,24 +49,38 @@ class MediaState extends Equatable {
     bool clearSuccess = false,
     DownloadProgress? progress,
     bool clearProgress = false,
+    bool? needsInstagramLogin,
+    bool clearInstagramLogin = false,
+    bool? needsFacebookLogin,
+    bool clearFacebookLogin = false,
   }) {
     return MediaState(
       phase: phase ?? this.phase,
       post: clearPost ? null : (post ?? this.post),
       selectedIds: selectedIds ?? this.selectedIds,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      successMessage: clearSuccess ? null : (successMessage ?? this.successMessage),
+      successMessage: clearSuccess
+          ? null
+          : (successMessage ?? this.successMessage),
       progress: clearProgress ? null : (progress ?? this.progress),
+      needsInstagramLogin: clearInstagramLogin
+          ? false
+          : (needsInstagramLogin ?? this.needsInstagramLogin),
+      needsFacebookLogin: clearFacebookLogin
+          ? false
+          : (needsFacebookLogin ?? this.needsFacebookLogin),
     );
   }
 
   @override
   List<Object?> get props => [
-        phase,
-        post,
-        selectedIds,
-        errorMessage,
-        successMessage,
-        progress,
-      ];
+    phase,
+    post,
+    selectedIds,
+    errorMessage,
+    successMessage,
+    progress,
+    needsInstagramLogin,
+    needsFacebookLogin,
+  ];
 }

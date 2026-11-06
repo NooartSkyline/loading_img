@@ -7,9 +7,12 @@ import 'package:loading/core/format_bytes.dart';
 import 'package:loading/features/media/data/download_keep_alive.dart';
 import 'package:loading/features/media/data/embedded_text.dart';
 import 'package:loading/features/media/data/facebook_parser.dart';
+import 'package:loading/features/media/data/facebook_session.dart';
 import 'package:loading/features/media/data/file_downloader.dart';
 import 'package:loading/features/media/data/gallery_store.dart';
+import 'package:loading/features/media/data/instagram_api.dart';
 import 'package:loading/features/media/data/instagram_parser.dart';
+import 'package:loading/features/media/data/instagram_session.dart';
 import 'package:loading/features/media/data/media_gateway.dart';
 import 'package:loading/features/media/data/page_client.dart';
 import 'package:loading/features/media/data/platform_detector.dart';
@@ -27,7 +30,10 @@ class MediaRepository implements MediaGateway {
     FileDownloader? downloader,
     GalleryStore? gallery,
     InstagramParser? instagram,
+    InstagramSession? session,
+    this.instagramApi,
     FacebookParser? facebook,
+    FacebookSession? facebookSession,
     VkParser? vk,
     DownloadKeepAlive? keepAlive,
     Future<Directory> Function()? workDirectory,
@@ -35,7 +41,9 @@ class MediaRepository implements MediaGateway {
        _downloader = downloader ?? FileDownloader(),
        _gallery = gallery ?? const GalleryStore(),
        _instagram = instagram ?? InstagramParser(),
+       _session = session ?? const WebViewInstagramSession(),
        _facebook = facebook ?? FacebookParser(),
+       _facebookSession = facebookSession ?? const WebViewFacebookSession(),
        _vk = vk ?? VkParser(),
        _keepAlive = keepAlive ?? DownloadKeepAlive(),
        _workDirectory = workDirectory ?? getTemporaryDirectory;
@@ -44,7 +52,11 @@ class MediaRepository implements MediaGateway {
   final FileDownloader _downloader;
   final GalleryStore _gallery;
   final InstagramParser _instagram;
+  final InstagramSession _session;
+  final InstagramApi? instagramApi;
+  InstagramApi? _ownedApi;
   final FacebookParser _facebook;
+  final FacebookSession _facebookSession;
   final VkParser _vk;
   final DownloadKeepAlive _keepAlive;
   final Future<Directory> Function() _workDirectory;
@@ -95,22 +107,42 @@ class MediaRepository implements MediaGateway {
       target = await _pages.resolveRedirect(uri);
     }
     _rejectStory(target);
-    final pages = <Uri>[InstagramParser.embedUri(target)];
-    final code = InstagramParser.shortcodeOf(target);
-    if (code != null && target.path.toLowerCase().contains('reel')) {
-      pages.add(Uri.https('www.instagram.com', '/p/$code/embed/captioned/'));
+    if (InstagramParser.shortcodeOf(target) == null) {
+      throw const AppException('ลิงก์ Instagram ไม่ใช่โพสต์หรือรีล');
     }
-    AppException? lastError;
+    final cookie = await _session.cookieHeader();
+    AppException? apiError;
+    if (instagramSignedIn(cookie)) {
+      try {
+        return await _api.load(target, cookie: cookie!);
+      } on InstagramLoginRequired catch (error) {
+        await _session.forget();
+        apiError = error;
+      } on AppException catch (error) {
+        apiError = error;
+      }
+    }
+    final pages = InstagramParser.pagesFor(target);
     for (final page in pages) {
       try {
         final html = await _pages.getHtml(page);
-        return _instagram.parse(html, target);
-      } on AppException catch (error) {
-        lastError = error;
+        final parsed = _instagram.read(html, target);
+        if (parsed.coverOnly) {
+          throw apiError ?? const InstagramLoginRequired();
+        }
+        return parsed.post;
+      } on InstagramLoginRequired {
+        rethrow;
+      } on AppException {
+        continue;
       }
     }
-    throw lastError ?? const AppException('ดึง Instagram ไม่สำเร็จ');
+    if (apiError != null) throw apiError;
+    throw const InstagramLoginRequired();
   }
+
+  InstagramApi get _api =>
+      instagramApi ?? (_ownedApi ??= DioInstagramApi(parser: _instagram));
 
   void _rejectStory(Uri uri) {
     if (uri.path.toLowerCase().contains('/stories/')) {
@@ -122,16 +154,57 @@ class MediaRepository implements MediaGateway {
 
   Future<ResolvedPost> _facebookPost(Uri uri) async {
     final story = uri.path.toLowerCase().contains('/stories/');
+    final cookie = await _facebookSession.cookieHeader();
+    final signedIn = facebookSignedIn(cookie);
+    final open = await _facebookPages(uri, cookie: null);
+    if (open.post != null) return open.post!;
+    if (signedIn) {
+      final authed = await _facebookPages(uri, cookie: cookie);
+      if (authed.post != null) return authed.post!;
+      if (authed.loginWall) {
+        await _facebookSession.forget();
+        throw const FacebookLoginRequired();
+      }
+      if (authed.sawPage || open.sawPage) {
+        throw AppException(
+          story
+              ? 'สตอรี่นี้ Facebook ไม่ได้ใส่ไฟล์ให้เปิดนอกแอป'
+              : 'ไม่พบรูปหรือวิดีโอในหน้า Facebook นี้ ลิงก์อาจไม่สาธารณะ',
+        );
+      }
+      throw authed.error ??
+          open.error ??
+          const AppException('ดึงข้อมูลจากลิงก์นี้ไม่สำเร็จ');
+    }
+    if (open.sawPage && !story) throw const FacebookLoginRequired();
+    if (open.sawPage) {
+      throw const AppException('สตอรี่นี้ Facebook ไม่ได้ใส่ไฟล์ให้เปิดนอกแอป');
+    }
+    throw open.error ?? const AppException('ดึงข้อมูลจากลิงก์นี้ไม่สำเร็จ');
+  }
+
+  Future<
+    ({ResolvedPost? post, bool sawPage, bool loginWall, AppException? error})
+  >
+  _facebookPages(Uri uri, {required String? cookie}) async {
     final queue = List<Uri>.of(_facebook.pagesFor(uri));
     final tried = <String>{};
     AppException? lastError;
     var sawPage = false;
     String? stubHtml;
+    final stills = <String, String>{};
+    final order = <String>[];
+    final ids = <String>[];
+    final seenIds = <String>{};
+    String? title;
+    String? story;
+    var storyScore = -1;
+    var loginWall = false;
     while (queue.isNotEmpty) {
       final page = queue.removeAt(0);
       if (!tried.add(page.toString())) continue;
       try {
-        final html = await _pages.getHtml(page);
+        final html = await _pages.getHtml(page, cookie: cookie);
         sawPage = true;
         final next = _facebook.redirectTarget(html);
         if (next != null && !tried.contains(next.toString())) {
@@ -140,30 +213,102 @@ class MediaRepository implements MediaGateway {
           continue;
         }
         final parsed = _facebook.parse(html, uri);
-        if (parsed != null) return _facebookAlbum(parsed, html);
+        if (parsed == null) {
+          if (_facebook.isLoginWall(html)) loginWall = true;
+          continue;
+        }
+        if (parsed.items.any((item) => item.kind == MediaKind.video)) {
+          return (post: parsed, sawPage: true, loginWall: false, error: null);
+        }
+        final pageIds = _facebook.photoIds(html);
+        final pageStory = _facebook.postId(html);
+        if (pageStory != null && pageIds.length > storyScore) {
+          story = pageStory;
+          storyScore = pageIds.length;
+        }
+        for (final id in pageIds) {
+          if (seenIds.add(id)) ids.add(id);
+        }
+        if (title == null || pageIds.isNotEmpty) {
+          title = parsed.title ?? title;
+        }
+        for (final item in parsed.items) {
+          final url = item.variants.first.url;
+          final key = _facebook.fileId(url) ?? url;
+          final current = stills[key];
+          if (current == null) {
+            stills[key] = url;
+            order.add(key);
+            continue;
+          }
+          if (_facebook.fileRank(url) > _facebook.fileRank(current)) {
+            stills[key] = url;
+          }
+        }
       } on AppException catch (error) {
         lastError = error;
       }
     }
+    if (order.isNotEmpty || ids.isNotEmpty) {
+      final collected = _facebookImages(
+        source: uri,
+        title: title,
+        urls: [for (final key in order) stills[key]!],
+      );
+      final post = ids.isEmpty
+          ? collected
+          : await _facebookAlbum(collected, ids, story, cookie);
+      if (post.items.isNotEmpty) {
+        return (post: post, sawPage: true, loginWall: false, error: null);
+      }
+    }
     if (stubHtml != null) {
       final parsed = _facebook.parse(stubHtml, uri);
-      if (parsed != null) return parsed;
+      if (parsed != null) {
+        return (post: parsed, sawPage: true, loginWall: false, error: null);
+      }
     }
-    if (sawPage) {
-      throw AppException(
-        story
-            ? 'สตอรี่นี้ Facebook ไม่ได้ใส่ไฟล์ให้เปิดนอกแอป'
-            : 'ไม่พบรูปหรือวิดีโอในหน้า Facebook นี้ ลิงก์อาจไม่สาธารณะ',
-      );
-    }
-    throw lastError ?? const AppException('ดึงข้อมูลจากลิงก์นี้ไม่สำเร็จ');
+    return (
+      post: null,
+      sawPage: sawPage,
+      loginWall: loginWall,
+      error: lastError,
+    );
   }
 
-  Future<ResolvedPost> _facebookAlbum(ResolvedPost parsed, String html) async {
+  ResolvedPost _facebookImages({
+    required Uri source,
+    required String? title,
+    required List<String> urls,
+  }) {
+    return ResolvedPost(
+      sourceUrl: source.toString(),
+      referer: 'https://www.facebook.com/',
+      platformLabel: 'Facebook',
+      title: title,
+      items: [
+        for (var i = 0; i < urls.length; i++)
+          MediaItem(
+            id: 'fb-image-$i',
+            kind: MediaKind.image,
+            title: title,
+            thumbnailUrl: urls[i],
+            variants: [
+              MediaVariant(id: 'file', label: 'ต้นฉบับ', url: urls[i]),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Future<ResolvedPost> _facebookAlbum(
+    ResolvedPost parsed,
+    List<String> known,
+    String? story,
+    String? cookie,
+  ) async {
     if (parsed.items.any((item) => item.kind == MediaKind.video)) return parsed;
-    final known = _facebook.photoIds(html);
     if (known.isEmpty) return parsed;
-    final story = _facebook.postId(html);
     final queue = List<String>.of(known);
     final seen = <String>{};
     final items = <MediaItem>[];
@@ -176,7 +321,10 @@ class MediaRepository implements MediaGateway {
       if (wave.isEmpty) break;
       final pages = await Future.wait([
         for (final id in wave)
-          _pages.getHtml(_facebook.photoPage(id, expanded: story != null)),
+          _pages.getHtml(
+            _facebook.photoPage(id, expanded: story != null),
+            cookie: cookie,
+          ),
       ]);
       for (final page in pages) {
         final inStory = story == null || _facebook.belongsToStory(page, story);
@@ -204,7 +352,35 @@ class MediaRepository implements MediaGateway {
       }
     }
     if (items.isEmpty) return parsed;
-    return parsed.copyWith(items: items);
+    return parsed.copyWith(items: _mergePhotos(parsed, items));
+  }
+
+  List<MediaItem> _mergePhotos(ResolvedPost parsed, List<MediaItem> opened) {
+    final urls = <String>[];
+    final seen = <String>{};
+    void add(String url) {
+      final key = _facebook.fileId(url) ?? url;
+      if (!seen.add(key)) return;
+      urls.add(url);
+    }
+
+    for (final item in opened) {
+      add(item.variants.first.url);
+    }
+    for (final item in parsed.items) {
+      if (item.kind != MediaKind.image) continue;
+      add(item.variants.first.url);
+    }
+    return [
+      for (var i = 0; i < urls.length; i++)
+        MediaItem(
+          id: 'fb-image-$i',
+          kind: MediaKind.image,
+          title: parsed.title,
+          thumbnailUrl: urls[i],
+          variants: [MediaVariant(id: 'file', label: 'ต้นฉบับ', url: urls[i])],
+        ),
+    ];
   }
 
   Future<ResolvedPost> _paged(

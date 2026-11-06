@@ -4,6 +4,7 @@ import 'package:loading/core/app_colors.dart';
 import 'package:loading/features/media/bloc/media_bloc.dart';
 import 'package:loading/features/media/bloc/media_event.dart';
 import 'package:loading/features/media/bloc/media_state.dart';
+import 'package:loading/features/media/ui/instagram_login_screen.dart';
 import 'package:loading/features/media/ui/widgets/download_dock.dart';
 import 'package:loading/features/media/ui/widgets/link_composer.dart';
 import 'package:loading/features/media/ui/widgets/media_grid.dart';
@@ -47,26 +48,36 @@ class HomeBody extends StatelessWidget {
                           width: 380,
                           child: DecoratedBox(
                             decoration: const BoxDecoration(
-                              border: Border(right: BorderSide(color: AppColors.line)),
+                              border: Border(
+                                right: BorderSide(color: AppColors.line),
+                              ),
                             ),
                             child: form,
                           ),
                         ),
-                        Expanded(child: _Gallery(state: state, columns: gridColumns)),
+                        Expanded(
+                          child: _Gallery(state: state, columns: gridColumns),
+                        ),
                       ],
                     )
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         form,
-                        Expanded(child: _Gallery(state: state, columns: gridColumns)),
+                        Expanded(
+                          child: _Gallery(state: state, columns: gridColumns),
+                        ),
                         if (state.post != null)
                           DownloadDock(
                             selectedCount: state.selectedCount,
                             downloading: state.phase == MediaPhase.downloading,
                             progress: state.progress,
-                            onDownload: () => context.read<MediaBloc>().add(const DownloadRequested()),
-                            onCancel: () => context.read<MediaBloc>().add(const DownloadCancelled()),
+                            onDownload: () => context.read<MediaBloc>().add(
+                              const DownloadRequested(),
+                            ),
+                            onCancel: () => context.read<MediaBloc>().add(
+                              const DownloadCancelled(),
+                            ),
                           ),
                       ],
                     ),
@@ -76,6 +87,18 @@ class HomeBody extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _login(
+  BuildContext context,
+  TextEditingController urlController, {
+  required bool facebook,
+}) async {
+  final signedIn = facebook
+      ? await FacebookLoginScreen.open(context)
+      : await InstagramLoginScreen.open(context);
+  if (!signedIn || !context.mounted) return;
+  context.read<MediaBloc>().add(ResolveRequested(urlController.text));
 }
 
 class _FormColumn extends StatelessWidget {
@@ -113,6 +136,28 @@ class _FormColumn extends StatelessWidget {
           StatusBanner(message: error, tone: BannerTone.error)
         else if (success != null)
           StatusBanner(message: success, tone: BannerTone.success),
+        if (state.needsInstagramLogin)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: FilledButton(
+              key: const ValueKey('instagram-login-button'),
+              onPressed: state.isBusy
+                  ? null
+                  : () => _login(context, urlController, facebook: false),
+              child: const Text('ล็อกอิน Instagram'),
+            ),
+          ),
+        if (state.needsFacebookLogin)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: FilledButton(
+              key: const ValueKey('facebook-login-button'),
+              onPressed: state.isBusy
+                  ? null
+                  : () => _login(context, urlController, facebook: true),
+              child: const Text('ล็อกอิน Facebook'),
+            ),
+          ),
         if (showDock && state.post != null) ...[
           _SelectionHeader(state: state),
           const Spacer(),
@@ -120,8 +165,10 @@ class _FormColumn extends StatelessWidget {
             selectedCount: state.selectedCount,
             downloading: state.phase == MediaPhase.downloading,
             progress: state.progress,
-            onDownload: () => context.read<MediaBloc>().add(const DownloadRequested()),
-            onCancel: () => context.read<MediaBloc>().add(const DownloadCancelled()),
+            onDownload: () =>
+                context.read<MediaBloc>().add(const DownloadRequested()),
+            onCancel: () =>
+                context.read<MediaBloc>().add(const DownloadCancelled()),
           ),
         ] else if (showDock)
           const Spacer(),
@@ -197,7 +244,11 @@ class _Gallery extends StatelessWidget {
               _summary(state),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           Expanded(
@@ -206,9 +257,12 @@ class _Gallery extends StatelessWidget {
               selectedIds: state.selectedIds,
               columns: columns,
               enabled: state.phase != MediaPhase.downloading,
-              onToggle: (id) => context.read<MediaBloc>().add(SelectionToggled(id)),
+              onToggle: (id) =>
+                  context.read<MediaBloc>().add(SelectionToggled(id)),
               onVariant: (itemId, variantId) {
-                context.read<MediaBloc>().add(VariantChosen(itemId: itemId, variantId: variantId));
+                context.read<MediaBloc>().add(
+                  VariantChosen(itemId: itemId, variantId: variantId),
+                );
               },
             ),
           ),
@@ -272,7 +326,10 @@ class _Step extends StatelessWidget {
             child: Center(
               child: Text(
                 number,
-                style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  color: AppColors.accent,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -304,11 +361,16 @@ class _SelectionHeader extends StatelessWidget {
       child: Row(
         children: [
           TextButton(
-            onPressed: busy ? null : () => context.read<MediaBloc>().add(const SelectionSet(true)),
+            onPressed: busy
+                ? null
+                : () => context.read<MediaBloc>().add(const SelectionSet(true)),
             child: const Text('เลือกทั้งหมด'),
           ),
           TextButton(
-            onPressed: busy ? null : () => context.read<MediaBloc>().add(const SelectionSet(false)),
+            onPressed: busy
+                ? null
+                : () =>
+                      context.read<MediaBloc>().add(const SelectionSet(false)),
             child: const Text('ล้างที่เลือก'),
           ),
         ],

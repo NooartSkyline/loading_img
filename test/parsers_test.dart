@@ -61,6 +61,20 @@ void main() {
     expect(post.initialSelectedIds, [post.items[3].id]);
   });
 
+  test('instagram uses the page image when the embed hides the files', () {
+    const html = '''
+      <meta property="og:title" content="โพสต์ทดสอบ" />
+      <meta property="og:image" content="https://scontent.cdninstagram.com/v/a.jpg?stp=1&amp;oe=2" />
+    ''';
+    final post = InstagramParser().parse(
+      html,
+      Uri.parse('https://www.instagram.com/p/DfRHW-jk4YW/?img_index=5'),
+    );
+    expect(post.items, hasLength(1));
+    expect(post.items.single.kind, MediaKind.image);
+    expect(post.items.single.variants.single.url, contains('stp=1&oe=2'));
+  });
+
   test('instagram carousel keeps the video and extra stills', () {
     const html = '''
       <meta property="og:title" content="โพสต์ทดสอบ" />
@@ -159,6 +173,29 @@ void main() {
     expect(post.items.last.variants.single.url, contains('222222222222'));
   });
 
+  test('facebook album keeps newer photo files alongside the cover', () {
+    const html = '''
+      <meta property="og:image" content="https://scontent.a.fbcdn.net/v/t51.82787-15/881186627_18660712219057696_6147597802159887051_n.jpg?stp=cp0_dst-jpg_e15_fr_q65" />
+      <img src="https://scontent.b.fbcdn.net/v/t51.82787-15/883045278_18660712234057696_951768013376818572_n.jpg?stp=dst-webp_p394x394_q70" />
+      <img src="https://scontent.c.fbcdn.net/v/t51.82787-15/888347043_18660712243057696_5080197855522185565_n.jpg?stp=dst-webp_p394x394_q70" />
+      <img src="https://scontent.d.fbcdn.net/v/t39.30808-1/3_333333333333_9_n.jpg?stp=s40x40" />
+    ''';
+    final post = FacebookParser().parse(
+      html,
+      Uri.parse('https://www.facebook.com/share/p/14uhMSo8yrF/'),
+    );
+    expect(post, isNotNull);
+    expect(post!.items, hasLength(3));
+    expect(
+      post.items.map((item) => item.variants.single.url),
+      containsAll([
+        contains('18660712219057696'),
+        contains('18660712234057696'),
+        contains('18660712243057696'),
+      ]),
+    );
+  });
+
   test('facebook share stub points at the full page', () {
     const html = r'''
       <script>window.location.replace("https:\/\/www.facebook.com\/share\/abc\/?hpir=1");</script>
@@ -184,15 +221,21 @@ void main() {
     );
     expect(
       FacebookParser().photoIds(
-        r'(dkc \"photo_fbid\") (dkc \"1000\") (dkc "photo_fbid") (dkc "1000") (dkc "photo_fbid") (dkc "1006")',
+        r'(dkc \"photo_fbid\") (dkc \"1000\") (dkc "photo_fbid") (dkc "1000") (dkc "photo_fbid") (dkc "1006") "photo_fbid":"1006" photo_fbid:"1008"',
       ),
-      ['1000', '1006'],
+      ['1000', '1006', '1008'],
     );
     expect(
       FacebookParser().linkedPhotoIds(
         '{&quot;direction&quot;:&quot;next&quot;,&quot;target_photo_id&quot;:&quot;1003&quot;}',
       ),
       ['1003'],
+    );
+    expect(
+      FacebookParser().linkedPhotoIds(
+        '{&quot;target_photo_fbid&quot;:&quot;1009&quot;}',
+      ),
+      ['1009'],
     );
   });
 

@@ -41,6 +41,8 @@ class MediaBloc extends Bloc<MediaEvent, MediaState> {
         clearError: true,
         clearSuccess: true,
         clearProgress: true,
+        clearInstagramLogin: true,
+        clearFacebookLogin: true,
       ),
     );
     try {
@@ -65,11 +67,16 @@ class MediaBloc extends Bloc<MediaEvent, MediaState> {
           clearError: true,
           clearSuccess: true,
           clearProgress: true,
+          clearInstagramLogin: true,
+          clearFacebookLogin: true,
         ),
       );
       unawaited(_attachSizes(post));
     } catch (error) {
       if (emit.isDone) return;
+      final appError = asAppException(error);
+      final needsInstagram = appError is InstagramLoginRequired;
+      final needsFacebook = appError is FacebookLoginRequired;
       emit(
         state.copyWith(
           phase: MediaPhase.idle,
@@ -77,7 +84,11 @@ class MediaBloc extends Bloc<MediaEvent, MediaState> {
           selectedIds: const [],
           clearProgress: true,
           clearSuccess: true,
-          errorMessage: asAppException(error).message,
+          errorMessage: appError.message,
+          needsInstagramLogin: needsInstagram,
+          clearInstagramLogin: !needsInstagram,
+          needsFacebookLogin: needsFacebook,
+          clearFacebookLogin: !needsFacebook,
         ),
       );
     }

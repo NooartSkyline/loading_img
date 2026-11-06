@@ -4,26 +4,32 @@ import 'package:loading/features/media/data/browser_headers.dart';
 
 class PageClient {
   PageClient({Dio? dio})
-      : dio = dio ??
-            Dio(
-              BaseOptions(
-                connectTimeout: const Duration(seconds: 20),
-                receiveTimeout: const Duration(seconds: 25),
-                followRedirects: true,
-                maxRedirects: 8,
-              ),
-            );
+    : dio =
+          dio ??
+          Dio(
+            BaseOptions(
+              connectTimeout: const Duration(seconds: 20),
+              receiveTimeout: const Duration(seconds: 25),
+              followRedirects: true,
+              maxRedirects: 8,
+            ),
+          );
 
   final Dio dio;
 
-  Future<String> getHtml(Uri uri) async {
+  Future<String> getHtml(Uri uri, {String? cookie}) async {
     try {
+      final headers = browserHeaders(referer: uri.origin);
+      if (cookie != null && cookie.isNotEmpty) {
+        headers['Cookie'] = cookie;
+      }
       final response = await dio.get<String>(
         uri.toString(),
         options: Options(
           responseType: ResponseType.plain,
-          headers: browserHeaders(referer: uri.origin),
-          validateStatus: (status) => status != null && status >= 200 && status < 300,
+          headers: headers,
+          validateStatus: (status) =>
+              status != null && status >= 200 && status < 300,
         ),
       );
       final body = response.data;
@@ -43,7 +49,8 @@ class PageClient {
         options: Options(
           responseType: ResponseType.plain,
           headers: browserHeaders(referer: uri.origin),
-          validateStatus: (status) => status != null && status >= 200 && status < 400,
+          validateStatus: (status) =>
+              status != null && status >= 200 && status < 400,
         ),
       );
       return response.realUri;
