@@ -30,6 +30,39 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "loading/login")
+            .setMethodCallHandler { call, result ->
+                val site = call.argument<String>("site")
+                if (site != "instagram" && site != "facebook") {
+                    result.error("login", "ไม่รู้จักไซต์", null)
+                    return@setMethodCallHandler
+                }
+                when (call.method) {
+                    "read" -> Thread {
+                        val value = try {
+                            LoginVault.read(this, site)
+                        } catch (_: Exception) {
+                            null
+                        }
+                        runOnUiThread { result.success(value) }
+                    }.start()
+                    "write" -> {
+                        val user = call.argument<String>("user") ?: ""
+                        val password = call.argument<String>("password") ?: ""
+                        Thread {
+                            try {
+                                LoginVault.write(this, site, user, password)
+                                runOnUiThread { result.success(null) }
+                            } catch (_: Exception) {
+                                runOnUiThread {
+                                    result.error("login", "จำชื่อผู้ใช้และรหัสผ่านไม่ได้", null)
+                                }
+                            }
+                        }.start()
+                    }
+                    else -> result.notImplemented()
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "loading/mux")
             .setMethodCallHandler { call, result ->
                 if (call.method != "combine") {

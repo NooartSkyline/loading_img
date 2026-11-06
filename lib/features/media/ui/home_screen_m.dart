@@ -9,7 +9,7 @@ class HomeScreenM extends StatelessWidget {
   });
 
   final TextEditingController urlController;
-  final VoidCallback onPaste;
+  final ValueChanged<String> onPaste;
 
   @override
   Widget build(BuildContext context) {

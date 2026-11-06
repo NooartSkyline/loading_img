@@ -21,7 +21,7 @@ class HomeBody extends StatelessWidget {
   });
 
   final TextEditingController urlController;
-  final VoidCallback onPaste;
+  final ValueChanged<String> onPaste;
   final bool splitPane;
   final int gridColumns;
   final Key layoutKey;
@@ -110,7 +110,7 @@ class _FormColumn extends StatelessWidget {
   });
 
   final TextEditingController urlController;
-  final VoidCallback onPaste;
+  final ValueChanged<String> onPaste;
   final MediaState state;
   final bool showDock;
 

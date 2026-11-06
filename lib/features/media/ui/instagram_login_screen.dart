@@ -6,6 +6,7 @@ import 'package:loading/core/app_colors.dart';
 import 'package:loading/features/media/data/browser_headers.dart';
 import 'package:loading/features/media/data/facebook_session.dart';
 import 'package:loading/features/media/data/instagram_session.dart';
+import 'package:loading/features/media/data/login_vault.dart';
 
 class InstagramLoginScreen {
   const InstagramLoginScreen._();
@@ -16,6 +17,7 @@ class InstagramLoginScreen {
       title: 'ล็อกอิน Instagram',
       startUrl: 'https://www.instagram.com/accounts/login/',
       viewKey: 'instagram-login',
+      site: 'instagram',
       prepare: const WebViewInstagramSession().clear,
       signedIn: () async {
         final header = await const WebViewInstagramSession().cookieHeader();
@@ -35,6 +37,7 @@ class FacebookLoginScreen {
       title: 'ล็อกอิน Facebook',
       startUrl: 'https://m.facebook.com/login.php',
       viewKey: 'facebook-login',
+      site: 'facebook',
       prepare: const WebViewFacebookSession().clear,
       signedIn: () async {
         final header = await const WebViewFacebookSession().cookieHeader();
@@ -50,6 +53,7 @@ class _CookieLoginScreen extends StatefulWidget {
     required this.title,
     required this.startUrl,
     required this.viewKey,
+    required this.site,
     required this.prepare,
     required this.signedIn,
     required this.failure,
@@ -58,6 +62,7 @@ class _CookieLoginScreen extends StatefulWidget {
   final String title;
   final String startUrl;
   final String viewKey;
+  final String site;
   final Future<void> Function() prepare;
   final Future<bool> Function() signedIn;
   final String failure;
@@ -67,6 +72,7 @@ class _CookieLoginScreen extends StatefulWidget {
     required String title,
     required String startUrl,
     required String viewKey,
+    required String site,
     required Future<void> Function() prepare,
     required Future<bool> Function() signedIn,
     required String failure,
@@ -78,6 +84,7 @@ class _CookieLoginScreen extends StatefulWidget {
               title: title,
               startUrl: startUrl,
               viewKey: viewKey,
+              site: site,
               prepare: prepare,
               signedIn: signedIn,
               failure: failure,
@@ -95,6 +102,7 @@ class _CookieLoginScreenState extends State<_CookieLoginScreen> {
   var _ready = false;
   var _closed = false;
   String? _error;
+  LoginSecret? _secret;
 
   @override
   void initState() {
@@ -104,8 +112,17 @@ class _CookieLoginScreenState extends State<_CookieLoginScreen> {
 
   Future<void> _prepare() async {
     await widget.prepare();
+    _secret = await const LoginVault().read(widget.site);
     if (!mounted) return;
     setState(() => _ready = true);
+  }
+
+  Future<void> _remember(List<dynamic> args) async {
+    if (args.length < 2) return;
+    final user = args[0]?.toString().trim() ?? '';
+    final password = args[1]?.toString() ?? '';
+    if (user.isEmpty || password.isEmpty) return;
+    await const LoginVault().write(widget.site, user: user, password: password);
   }
 
   Future<void> _finishIfSignedIn() async {
@@ -149,7 +166,26 @@ class _CookieLoginScreenState extends State<_CookieLoginScreen> {
                       thirdPartyCookiesEnabled: true,
                       sharedCookiesEnabled: true,
                     ),
+                    onWebViewCreated: (controller) {
+                      controller.addJavaScriptHandler(
+                        handlerName: 'loginSecret',
+                        callback: _remember,
+                      );
+                    },
                     onLoadStop: (controller, url) {
+                      unawaited(
+                        controller.evaluateJavascript(
+                          source: loginCaptureScript(),
+                        ),
+                      );
+                      final secret = _secret;
+                      if (secret != null) {
+                        unawaited(
+                          controller.evaluateJavascript(
+                            source: loginFillScript(secret),
+                          ),
+                        );
+                      }
                       unawaited(_finishIfSignedIn());
                     },
                     onUpdateVisitedHistory: (controller, url, androidIsReload) {

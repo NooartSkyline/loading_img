@@ -15,6 +15,8 @@
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		B1EE0A1F1ED2DC5600515811 /* DownloadKeepAlive.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1EE0A1E1ED2DC5600515811 /* DownloadKeepAlive.swift */; };
 		C2FF1B2F2FE3ED6701626922 /* TrackMux.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2FF1B2E2FE3ED6701626922 /* TrackMux.swift */; };
+		A7C31D0F2FE4AA1100C1B001 /* PasteControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C31D0E2FE4AA1100C1B001 /* PasteControl.swift */; };
+		B7D41E1F2FE4BB2200C1B002 /* LoginVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D41E1E2FE4BB2200C1B002 /* LoginVault.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
@@ -61,6 +63,8 @@
 		7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		B1EE0A1E1ED2DC5600515811 /* DownloadKeepAlive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadKeepAlive.swift; sourceTree = "<group>"; };
 		C2FF1B2E2FE3ED6701626922 /* TrackMux.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackMux.swift; sourceTree = "<group>"; };
+		A7C31D0E2FE4AA1100C1B001 /* PasteControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteControl.swift; sourceTree = "<group>"; };
+		B7D41E1E2FE4BB2200C1B002 /* LoginVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginVault.swift; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
@@ -168,6 +172,8 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				B1EE0A1E1ED2DC5600515811 /* DownloadKeepAlive.swift */,
 				C2FF1B2E2FE3ED6701626922 /* TrackMux.swift */,
+				A7C31D0E2FE4AA1100C1B001 /* PasteControl.swift */,
+				B7D41E1E2FE4BB2200C1B002 /* LoginVault.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
@@ -389,6 +395,8 @@
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				B1EE0A1F1ED2DC5600515811 /* DownloadKeepAlive.swift in Sources */,
 				C2FF1B2F2FE3ED6701626922 /* TrackMux.swift in Sources */,
+				A7C31D0F2FE4AA1100C1B001 /* PasteControl.swift in Sources */,
+				B7D41E1F2FE4BB2200C1B002 /* LoginVault.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 			);

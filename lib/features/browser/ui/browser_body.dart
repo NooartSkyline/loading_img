@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:loading/core/app_colors.dart';
 import 'package:loading/features/browser/bloc/browser_cubit.dart';
+import 'package:loading/features/media/ui/widgets/paste_button.dart';
 import 'package:loading/features/media/ui/widgets/status_banner.dart';
 
 class BrowserBody extends StatelessWidget {
@@ -17,7 +18,7 @@ class BrowserBody extends StatelessWidget {
   });
 
   final TextEditingController urlController;
-  final VoidCallback onPaste;
+  final ValueChanged<String> onPaste;
   final VoidCallback onOpen;
   final VoidCallback onDownload;
   final Widget view;
@@ -109,7 +110,7 @@ class _AddressBar extends StatelessWidget {
 
   final TextEditingController controller;
   final bool busy;
-  final VoidCallback onPaste;
+  final ValueChanged<String> onPaste;
   final VoidCallback onOpen;
 
   @override
@@ -140,11 +141,7 @@ class _AddressBar extends StatelessWidget {
             style: const TextStyle(color: AppColors.text),
             decoration: InputDecoration(
               hintText: 'วางลิงก์หน้าเว็บที่มีตัวเล่น',
-              suffixIcon: IconButton(
-                onPressed: onPaste,
-                tooltip: 'วางจากคลิปบอร์ด',
-                icon: const Icon(Icons.content_paste_outlined),
-              ),
+              suffixIcon: PasteButton(onPaste: onPaste),
             ),
             onSubmitted: busy ? null : (_) => onOpen(),
           ),

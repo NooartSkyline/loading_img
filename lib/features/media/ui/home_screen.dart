@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:loading/core/responsive.dart';
 import 'package:loading/features/media/bloc/media_bloc.dart';
@@ -29,16 +28,16 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  Future<void> _paste() async {
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    if (!mounted) return;
-    final text = data?.text?.trim() ?? '';
+  void _paste(String raw) {
+    final text = raw.trim();
     if (text.isEmpty) {
       context.read<MediaBloc>().add(const NoticeRequested('คลิปบอร์ดว่าง'));
       return;
     }
     _urlController.text = text;
-    _urlController.selection = TextSelection.collapsed(offset: _urlController.text.length);
+    _urlController.selection = TextSelection.collapsed(
+      offset: _urlController.text.length,
+    );
   }
 
   @override

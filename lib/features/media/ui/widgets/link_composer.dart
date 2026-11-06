@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:loading/core/app_colors.dart';
+import 'package:loading/features/media/ui/widgets/paste_button.dart';
 
 class LinkComposer extends StatelessWidget {
   const LinkComposer({
@@ -15,7 +16,7 @@ class LinkComposer extends StatelessWidget {
   final bool busy;
   final bool resolving;
   final VoidCallback onResolve;
-  final VoidCallback onPaste;
+  final ValueChanged<String> onPaste;
 
   @override
   Widget build(BuildContext context) {
@@ -55,11 +56,7 @@ class LinkComposer extends StatelessWidget {
                   hintText: 'วางลิงก์ Instagram, Facebook หรือ VK',
                   filled: true,
                   fillColor: AppColors.background,
-                  suffixIcon: IconButton(
-                    onPressed: onPaste,
-                    tooltip: 'วางจากคลิปบอร์ด',
-                    icon: const Icon(Icons.content_paste_outlined),
-                  ),
+                  suffixIcon: PasteButton(onPaste: onPaste),
                 ),
                 onSubmitted: busy ? null : (_) => onResolve(),
               ),

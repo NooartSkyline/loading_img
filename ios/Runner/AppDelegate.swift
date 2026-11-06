@@ -12,7 +12,10 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-    DownloadKeepAlive.shared.register(messenger: engineBridge.applicationRegistrar.messenger())
-    TrackMux.register(messenger: engineBridge.applicationRegistrar.messenger())
+    let registrar = engineBridge.applicationRegistrar
+    DownloadKeepAlive.shared.register(messenger: registrar.messenger())
+    TrackMux.register(messenger: registrar.messenger())
+    PasteControlPlugin.register(registrar: registrar)
+    LoginVault.register(messenger: registrar.messenger())
   }
 }

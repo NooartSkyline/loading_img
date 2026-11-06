@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:loading/core/responsive.dart';
@@ -27,10 +26,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
     super.dispose();
   }
 
-  Future<void> _paste() async {
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    if (!mounted) return;
-    final text = data?.text?.trim() ?? '';
+  void _paste(String raw) {
+    final text = raw.trim();
     if (text.isEmpty) {
       context.read<BrowserCubit>().fail('คลิปบอร์ดว่าง');
       return;

@@ -12,7 +12,7 @@ class BrowserScreenT extends StatelessWidget {
   });
 
   final TextEditingController urlController;
-  final VoidCallback onPaste;
+  final ValueChanged<String> onPaste;
   final VoidCallback onOpen;
   final VoidCallback onDownload;
   final Widget view;
